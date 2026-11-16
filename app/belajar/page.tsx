@@ -1,0 +1,105 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { ClassroomQuiz, loadQuizzes, SESSION_KEY, USER_KEY } from "../../lib/classroom";
+
+type Attempt = { score: number; answers: number[]; completedAt: number };
+type Attempts = Record<string, Attempt>;
+
+const topics = [
+  { number: "01", title: "Konsep Usaha", text: "Hubungan gaya, perpindahan, dan usaha dalam aktivitas sehari-hari.", formula: "W = F × s", tint: "blue" },
+  { number: "02", title: "Energi Kinetik", text: "Bagaimana massa dan kecepatan menentukan energi gerak.", formula: "Eₖ = ½mv²", tint: "gold" },
+  { number: "03", title: "Energi Potensial", text: "Energi yang tersimpan karena posisi dan ketinggian benda.", formula: "Eₚ = mgh", tint: "mint" },
+  { number: "04", title: "Kekekalan Energi", text: "Menyimak perubahan energi mekanik dalam sebuah sistem.", formula: "Eₘ = Eₖ + Eₚ", tint: "violet" },
+];
+
+export default function StudentPage() {
+  const [email, setEmail] = useState("");
+  const [quizzes, setQuizzes] = useState<ClassroomQuiz[]>([]);
+  const [attempts, setAttempts] = useState<Attempts>({});
+  const [active, setActive] = useState<ClassroomQuiz | null>(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const submitQuizRef = useRef<(force?: boolean) => void>(() => {});
+
+  useEffect(() => {
+    const session = localStorage.getItem(SESSION_KEY);
+    if (!session) { window.location.href = "/auth"; return; }
+    const user = localStorage.getItem(USER_KEY) || session;
+    setEmail(user);
+    setQuizzes(loadQuizzes().filter((quiz) => !quiz.expiresAt || quiz.expiresAt > Date.now()));
+    try { setAttempts(JSON.parse(localStorage.getItem(`fisikaquest-attempts-${user}`) || "{}")); }
+    catch { setAttempts({}); }
+  }, []);
+
+  function logout() {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.location.href = "/";
+  }
+
+  function openQuiz(quiz: ClassroomQuiz) {
+    if (quiz.expiresAt && quiz.expiresAt <= Date.now()) {
+      setQuizzes((current) => current.filter((item) => item.id !== quiz.id));
+      return;
+    }
+    const previous = attempts[quiz.id];
+    setActive(quiz);
+    setQuestionIndex(0);
+    setAnswers(previous?.answers ?? Array(quiz.questions.length).fill(-1));
+    setSubmitted(Boolean(previous));
+    setScore(previous?.score ?? 0);
+    setTimeLeft((quiz.durationMinutes ?? 15) * 60);
+    setAutoSubmitted(false);
+  }
+
+  function submitQuiz(force = false) {
+    if (!active || (!force && answers.some((answer) => answer < 0))) return;
+    const correct = active.questions.reduce((total, question, index) => total + (answers[index] === question.correctIndex ? 1 : 0), 0);
+    const finalScore = Math.round((correct / active.questions.length) * 1000) / 10;
+    const nextAttempts = { ...attempts, [active.id]: { score: finalScore, answers, completedAt: Date.now() } };
+    localStorage.setItem(`fisikaquest-attempts-${email}`, JSON.stringify(nextAttempts));
+    setAttempts(nextAttempts);
+    setScore(finalScore);
+    setAutoSubmitted(force);
+    setSubmitted(true);
+  }
+
+  submitQuizRef.current = submitQuiz;
+
+  useEffect(() => {
+    if (!active || submitted) return;
+    if (timeLeft <= 0) { submitQuizRef.current(true); return; }
+    const timer = window.setTimeout(() => setTimeLeft((remaining) => remaining - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [active, submitted, timeLeft]);
+
+  function restartQuiz() {
+    if (!active) return;
+    setAnswers(Array(active.questions.length).fill(-1));
+    setQuestionIndex(0);
+    setSubmitted(false);
+    setScore(0);
+    setAutoSubmitted(false);
+    setTimeLeft((active.durationMinutes ?? 15) * 60);
+  }
+
+  const currentQuestion = active?.questions[questionIndex];
+
+  return <main className="classroom-page">
+    <header className="classroom-header"><Link href="/" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link><nav><a href="#materi-siswa">Materi</a><a href="#kuis-siswa">Kuis</a><span className="student-email">{email}</span><button onClick={logout}>Keluar</button></nav></header>
+    <section className="classroom-section quiz-section" id="kuis-siswa"><div className="classroom-section-heading"><div><span className="classroom-kicker">TANTANGAN DARI GURU</span><h2>Waktunya <em>mencoba.</em></h2></div><p>Kamu bisa memilih dan mengubah jawaban sampai menekan tombol submit di akhir kuis.</p></div><div className="student-quiz-grid">{quizzes.map((quiz,index)=>{const attempt=attempts[quiz.id];return <article className={`student-quiz-card${attempt?" student-quiz-completed":""}`} key={quiz.id}><div className="student-quiz-icon">0{index+1}</div><span className="quiz-topic-label">{quiz.topic}</span>{attempt&&<span className="student-complete-badge">✓ Selesai · {attempt.score}/100</span>}<h3>{quiz.title}</h3><p>Guru: {quiz.createdBy || "Guru FisikaQuest"}</p><p>{quiz.questions.length} soal · estimasi {Math.max(1,quiz.questions.length*2)} menit</p><button onClick={()=>openQuiz(quiz)}>{attempt?"Lihat hasil":"Mulai kuis"}<span>↗</span></button></article>;})}{quizzes.length===0&&<p className="empty-quizzes">Belum ada kuis. Cek kembali nanti saat guru sudah membagikan kuis.</p>}</div></section>
+    <section className="classroom-hero"><div><span className="classroom-kicker">RUANG BELAJAR SISWA</span><h1>Halo, <em>{email ? email.split("@")[0] : "pembelajar"}.</em><br/>Siap belajar hari ini?</h1><p>Pelajari konsep usaha dan energi, lalu uji pemahamanmu lewat kuis dari guru.</p><a className="classroom-cta" href="#materi-siswa">Jelajahi materi <span>↓</span></a></div><div className="classroom-hero-visual"><div className="hero-visual-orbit"/><div className="hero-visual-core">W</div><span className="hero-visual-chip">W = F × s</span><small>USAHA &amp; ENERGI</small></div></section>
+    <section className="classroom-section" id="materi-siswa"><div className="classroom-section-heading"><div><span className="classroom-kicker">PETA BELAJAR</span><h2>Materi <em>pilihan.</em></h2></div><p>Empat konsep inti untuk membangun pemahamanmu, satu langkah demi satu langkah.</p></div><div className="topic-grid">{topics.map((topic)=><article className={`topic-card topic-${topic.tint}`} key={topic.number}><div className="topic-top"><span>{topic.number}</span><b>{topic.formula}</b></div><h3>{topic.title}</h3><p>{topic.text}</p><a href="#kuis-siswa">Pelajari konsep <span>↗</span></a></article>)}</div></section>
+
+    <footer className="classroom-footer"><span>FisikaQuest <i>·</i> Belajar dengan rasa ingin tahu.</span><Link href="/guru">Area guru</Link></footer>
+    {active&&<div className="classroom-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setActive(null);}}><section className="student-question-modal student-quiz-modal" role="dialog" aria-modal="true" aria-labelledby="student-question-title"><button className="student-modal-close" onClick={()=>setActive(null)} aria-label="Tutup">×</button><span className="classroom-kicker">{active.topic}</span><h2 id="student-question-title">{active.title}</h2>{!submitted&&<div className="quiz-time"><span>Waktu tersisa</span><strong className={timeLeft<=60?"quiz-time-warning":""}>{Math.floor(timeLeft/60).toString().padStart(2,"0")}:{(timeLeft%60).toString().padStart(2,"0")}</strong></div>}{submitted&&autoSubmitted&&<div className="quiz-timeout-note" role="status">Waktu habis. Jawaban yang sudah dipilih dikirim otomatis.</div>}
+      {submitted?<div className="quiz-results"><div className="quiz-result-score"><small>SKOR AKHIR</small><strong>{score}<span>/100</span></strong><p>{active.questions.filter((question,index)=>answers[index]===question.correctIndex).length} dari {active.questions.length} soal benar · {Math.round(1000/active.questions.length)/10} poin per soal</p></div><div className="quiz-result-list">{active.questions.map((question,index)=>{const isCorrect=answers[index]===question.correctIndex;return <article className="quiz-result-item" key={`${index}-${question.question}`}><div className="quiz-result-heading"><b>Soal {index+1}</b><span className={isCorrect?"result-correct":"result-incorrect"}>{isCorrect?"Benar":"Belum tepat"}</span></div><p>{question.question}</p><div className="result-answer"><small>Jawabanmu</small><span>{answers[index]>=0?question.options[answers[index]]:"Tidak dijawab"}</span></div>{!isCorrect&&<div className="result-answer result-correct-answer"><small>Jawaban benar</small><span>{question.options[question.correctIndex]}</span></div>}<div className="result-explanation"><small>Pembahasan</small><p>{question.explanation}</p></div></article>;})}</div><div className="quiz-result-actions"><button onClick={restartQuiz}>Coba lagi</button><button className="student-modal-done" onClick={()=>setActive(null)}>Selesai</button></div></div>:<><div className="student-question-progress">Soal {questionIndex+1} dari {active.questions.length}<span>{answers.filter((answer)=>answer>=0).length}/{active.questions.length} terjawab</span></div><p>{currentQuestion?.question}</p><div className="student-options">{currentQuestion?.options.map((option,index)=><button key={`${index}-${option}`} className={answers[questionIndex]===index?"option-picked":""} aria-pressed={answers[questionIndex]===index} onClick={()=>setAnswers((current)=>current.map((answer,answerIndex)=>answerIndex===questionIndex?index:answer))}><b>{String.fromCharCode(65+index)}</b>{option}</button>)}</div><div className="quiz-navigation">{questionIndex>0&&<button className="quiz-back-button" onClick={()=>setQuestionIndex((value)=>value-1)}>← Sebelumnya</button>}{questionIndex<active.questions.length-1?<button className="student-modal-done" onClick={()=>setQuestionIndex((value)=>value+1)}>Soal berikutnya →</button>:<button className="student-modal-done" disabled={answers.some((answer)=>answer<0)} onClick={()=>submitQuiz()}>Submit kuis</button>}</div>{answers.some((answer)=>answer<0)&&<small className="quiz-answer-hint">Jawab semua soal untuk mengirim kuis.</small>}</>}
+    </section></div>}
+  </main>;
+}
