@@ -41,6 +41,10 @@ export default function AuthPage() {
       const user = session.user;
       const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
       if (profileError) throw profileError;
+      if (mode === "signup" && profile?.role !== role) {
+        setMessage("Akun dibuat, tetapi role belum tersimpan. Terapkan migrasi Supabase terbaru (supabase db push), lalu masuk kembali.");
+        return;
+      }
       router.replace(profile?.role === "teacher" ? "/guru" : "/belajar");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Terjadi kendala. Silakan coba lagi.";
