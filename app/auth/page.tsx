@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -9,22 +10,41 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
-  const [role, setRole] = useState<"student" | "teacher">("student");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setSuccess(false);
     const normalizedEmail = email.trim().toLowerCase();
+    if (!supabase) {
+      setMessage("Konfigurasi Supabase belum tersedia. Periksa NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY di Vercel.");
+      return;
+    }
     try {
-      const response = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, email: normalizedEmail, password, role }) });
-      const result = await response.json() as { email?: string; role?: "student" | "teacher"; error?: string };
-      if (!response.ok || !result.email || !result.role) { setMessage(result.error ?? "Terjadi kendala. Silakan coba lagi."); return; }
-      localStorage.setItem("fisikaquest-session", result.email);
-      localStorage.setItem("fisikaquest-current-user", result.email);
-      setSuccess(true);
-      window.location.href = result.role === "teacher" ? "/guru" : "/belajar";
-    } catch { setMessage("Tidak dapat terhubung ke server. Silakan coba lagi."); }
+      if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+        if (error) throw error;
+        if (!data.session) {
+          setSuccess(true);
+          setMessage("Pendaftaran berhasil. Periksa email untuk mengonfirmasi akun sebelum masuk.");
+          return;
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+        if (error) throw error;
+      }
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw userError ?? new Error("Sesi login tidak ditemukan.");
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      if (profileError) throw profileError;
+      window.location.href = profile?.role === "teacher" ? "/guru" : "/belajar";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Terjadi kendala. Silakan coba lagi.";
+      if (/fetch|network|failed to/i.test(message)) setMessage("Tidak dapat terhubung ke Supabase. Periksa URL, anon key, dan pengaturan jaringan proyek.");
+      else if (/invalid login credentials/i.test(message)) setMessage("Email atau kata sandi kurang tepat. Coba lagi.");
+      else if (/already registered|user already exists/i.test(message)) setMessage("Email ini sudah terdaftar. Silakan masuk.");
+      else setMessage(message);
+    }
   }
 
   return (
@@ -45,7 +65,6 @@ export default function AuthPage() {
           <form className="auth-form" onSubmit={submit}>
             <label htmlFor="email">Email</label>
             <input id="email" type="email" autoComplete="email" placeholder="nama@email.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
-            {mode === "signup" && <div className="auth-role-picker"><span>Daftar sebagai</span><div><button type="button" className={role === "student" ? "selected" : ""} onClick={() => setRole("student")}>Siswa</button><button type="button" className={role === "teacher" ? "selected" : ""} onClick={() => setRole("teacher")}>Guru</button></div></div>}
             <div className="auth-password-label"><label htmlFor="password">Kata sandi</label>{mode === "signup" && <span>Min. 8 karakter</span>}</div>
             <input id="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="Masukkan kata sandi" value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === "signup" ? 8 : undefined} required />
             {message && <p className={success ? "auth-message auth-message-success" : "auth-message"} role="status">{message}</p>}

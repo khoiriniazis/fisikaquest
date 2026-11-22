@@ -42,7 +42,7 @@ The initial Supabase schema and row-level security policies are in `supabase/mig
 
 1. Create a Supabase project and copy its project URL and publishable (or anon) key.
 2. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. Install the Supabase CLI and link this folder with `supabase link --project-ref <project-ref>`.
+3. Install the Supabase CLI and link this folder with `supabase link --project-ref <project-ref>`. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel for every deployment environment, then redeploy. Set the Supabase Auth Site URL to your deployed domain and add it to the allowed redirect URLs.
 4. Apply the schema with `supabase db push`.
 5. Register a user through Supabase Auth. New profiles are students by default. Promote a trusted teacher from the Supabase SQL editor:
 
@@ -55,4 +55,4 @@ where u.id = p.id and u.email = 'teacher@example.com';
 
 The migration stores quiz metadata, questions, answer keys, and the latest submission per student and quiz. Students cannot read the answer-key table or directly write scores; submissions are scored by the `submit_quiz` database function. Teachers can manage only their own quizzes and see results for those quizzes.
 
-This commit prepares the database layer only. The current app still authenticates against its local JSON file and stores quizzes/attempts in browser `localStorage`; the UI must be migrated to Supabase Auth and database queries before those records use this schema. Do not put a Supabase service-role key in browser code.
+Login and signup use Supabase Auth. New accounts receive the default `student` profile. Promote trusted teachers with the SQL above; do not accept teacher roles from public signup. Classroom quiz data is still stored in browser `localStorage` and is not yet synchronized with Supabase. Do not put a Supabase service-role key in browser code.
