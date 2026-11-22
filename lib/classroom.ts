@@ -1,4 +1,4 @@
-﻿export type QuizQuestion = {
+export type QuizQuestion = {
   question: string;
   options: string[];
   correctIndex: number;
@@ -17,8 +17,6 @@ export type ClassroomQuiz = {
 };
 
 export const QUIZZES_KEY = "fisikaquest-quizzes";
-export const SESSION_KEY = "fisikaquest-session";
-export const USER_KEY = "fisikaquest-current-user";
 
 export const starterQuiz: ClassroomQuiz = {
   id: "starter-usaha", title: "Misi pertama: usaha", topic: "Konsep Usaha", createdAt: 0,

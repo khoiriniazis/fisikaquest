@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { ClassroomQuiz, loadQuizzes, QUIZZES_KEY, QuizQuestion, SESSION_KEY } from "../../lib/classroom";
+import { ClassroomQuiz, loadQuizzes, QUIZZES_KEY, QuizQuestion } from "../../lib/classroom";
+import { supabase } from "@/lib/supabase";
 
 type DraftQuestion = QuizQuestion & { id: string };
 type QuizSubmission = { student: string; score: number; completedAt: number };
@@ -28,6 +30,7 @@ const loadQuizSubmissions = (quizzes: ClassroomQuiz[]): QuizSubmissions => {
 const newQuestion = (): DraftQuestion => ({ id: crypto.randomUUID(), question: "", options: ["", "", "", ""], correctIndex: 0, explanation: "" });
 
 export default function TeacherPage() {
+  const router = useRouter();
   const [quizzes, setQuizzes] = useState<ClassroomQuiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmissions>({});
   const [resultsQuizId, setResultsQuizId] = useState<string | null>(null);
@@ -37,7 +40,33 @@ export default function TeacherPage() {
   const [teacherEmail, setTeacherEmail] = useState("");
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  useEffect(() => { const session = localStorage.getItem(SESSION_KEY); if (!session) { window.location.href = "/auth"; return; } const user = localStorage.getItem("fisikaquest-current-user") || session; setTeacherEmail(user); const allQuizzes = loadQuizzes(); setQuizzes(allQuizzes); setSubmissions(loadQuizSubmissions(allQuizzes.filter((quiz) => quiz.createdBy === user))); setQuestions([newQuestion()]); setReady(true); }, []);
+  useEffect(() => {
+    let active = true;
+    async function restoreTeacherSession() {
+      if (!supabase) { router.replace("/auth"); return; }
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (!active) return;
+      if (error || !session?.user) { router.replace("/auth"); return; }
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+      if (!active) return;
+      if (profileError || profile?.role !== "teacher") { router.replace("/belajar"); return; }
+      const user = session.user.email ?? session.user.id;
+      setTeacherEmail(user);
+      const allQuizzes = loadQuizzes();
+      setQuizzes(allQuizzes);
+      setSubmissions(loadQuizSubmissions(allQuizzes.filter((quiz) => quiz.createdBy === user)));
+      setQuestions([newQuestion()]);
+      setReady(true);
+    }
+    void restoreTeacherSession();
+    return () => { active = false; };
+  }, [router]);
+
+  async function logout() {
+    await supabase?.auth.signOut();
+    router.replace("/");
+  }
 
   function updateQuestion(id: string, update: Partial<DraftQuestion>) {
     setQuestions((current) => current.map((question) => question.id === id ? { ...question, ...update } : question));
@@ -75,10 +104,12 @@ export default function TeacherPage() {
     setNotice("Kuis dihapus.");
   }
 
+  if (!ready) return null;
+
   const ownQuizzes = quizzes.filter((quiz) => quiz.createdBy === teacherEmail);
 
   return <main className="teacher-page">
-    <header className="classroom-header"><Link href="/" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link><nav><span className="teacher-badge">PANEL GURU</span><Link href="/belajar">Lihat tampilan siswa ↗</Link><Link href="/">Beranda</Link></nav></header>
+    <header className="classroom-header"><Link href="/" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link><nav><span className="teacher-badge">PANEL GURU</span><Link href="/belajar">Lihat tampilan siswa ↗</Link><Link href="/">Beranda</Link><button onClick={logout}>Keluar</button></nav></header>
     <section className="teacher-wrap"><div className="teacher-intro"><span className="classroom-kicker">RUANG KREASI PENGAJAR</span><h1>Siapkan tantangan<br/><em>untuk kelasmu.</em></h1><p>Buat satu set kuis dengan beberapa soal, pilih jawaban benar, dan tambahkan pembahasan untuk siswa.</p></div>
       <div className="teacher-layout"><form ref={formRef} className="teacher-form" onSubmit={createQuiz}><h2>{editingQuizId ? "Edit kuis" : "Buat kuis baru"}</h2><p>Setiap judul kuis dapat berisi beberapa soal pilihan ganda.</p>
         <label>Judul kuis<input name="title" placeholder="Contoh: Memahami usaha" required/></label>

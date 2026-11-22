@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,11 +36,12 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
       }
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw userError ?? new Error("Sesi login tidak ditemukan.");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) throw sessionError ?? new Error("Sesi login tidak tersimpan di browser.");
+      const user = session.user;
       const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
       if (profileError) throw profileError;
-      window.location.href = profile?.role === "teacher" ? "/guru" : "/belajar";
+      router.replace(profile?.role === "teacher" ? "/guru" : "/belajar");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Terjadi kendala. Silakan coba lagi.";
       if (/fetch|network|failed to/i.test(message)) setMessage("Tidak dapat terhubung ke Supabase. Periksa URL, anon key, dan pengaturan jaringan proyek.");

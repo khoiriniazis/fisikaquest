@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ClassroomQuiz, loadQuizzes, SESSION_KEY, USER_KEY } from "../../lib/classroom";
+import { ClassroomQuiz, loadQuizzes } from "../../lib/classroom";
+import { supabase } from "@/lib/supabase";
 
 type Attempt = { score: number; answers: number[]; completedAt: number };
 type Attempts = Record<string, Attempt>;
@@ -15,6 +17,8 @@ const topics = [
 ];
 
 export default function StudentPage() {
+  const router = useRouter();
+  const [authReady, setAuthReady] = useState(false);
   const [email, setEmail] = useState("");
   const [quizzes, setQuizzes] = useState<ClassroomQuiz[]>([]);
   const [attempts, setAttempts] = useState<Attempts>({});
@@ -28,20 +32,28 @@ export default function StudentPage() {
   const submitQuizRef = useRef<(force?: boolean) => void>(() => {});
 
   useEffect(() => {
-    const session = localStorage.getItem(SESSION_KEY);
-    if (!session) { window.location.href = "/auth"; return; }
-    const user = localStorage.getItem(USER_KEY) || session;
-    setEmail(user);
-    setQuizzes(loadQuizzes().filter((quiz) => !quiz.expiresAt || quiz.expiresAt > Date.now()));
-    try { setAttempts(JSON.parse(localStorage.getItem(`fisikaquest-attempts-${user}`) || "{}")); }
-    catch { setAttempts({}); }
-  }, []);
+    let active = true;
+    async function restoreSession() {
+      if (!supabase) { router.replace("/auth"); return; }
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (!active) return;
+      if (error || !session?.user) { router.replace("/auth"); return; }
+      const user = session.user.email ?? session.user.id;
+      setEmail(user);
+      setQuizzes(loadQuizzes().filter((quiz) => !quiz.expiresAt || quiz.expiresAt > Date.now()));
+      try { setAttempts(JSON.parse(localStorage.getItem(`fisikaquest-attempts-${user}`) || "{}")); }
+      catch { setAttempts({}); }
+      setAuthReady(true);
+    }
+    void restoreSession();
+    return () => { active = false; };
+  }, [router]);
 
-  function logout() {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(USER_KEY);
-    window.location.href = "/";
+  async function logout() {
+    await supabase?.auth.signOut();
+    router.replace("/");
   }
+
 
   function openQuiz(quiz: ClassroomQuiz) {
     if (quiz.expiresAt && quiz.expiresAt <= Date.now()) {
@@ -88,6 +100,8 @@ export default function StudentPage() {
     setAutoSubmitted(false);
     setTimeLeft((active.durationMinutes ?? 15) * 60);
   }
+
+  if (!authReady) return null;
 
   const currentQuestion = active?.questions[questionIndex];
 
