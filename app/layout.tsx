@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,7 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css" crossOrigin="anonymous" /></head>
+      <body className="min-h-full flex flex-col">
+        <Script src="https://cdn.jsdelivr.net/npm/mathlive" strategy="beforeInteractive" />
+        <Script src="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.js" strategy="beforeInteractive" />
+        {children}
+      </body>
     </html>
   );
 }
