@@ -10,6 +10,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [role, setRole] = useState<"student" | "teacher">("student");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,11 +23,11 @@ export default function AuthPage() {
     }
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+        const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password, options: { data: { role } } });
         if (error) throw error;
         if (!data.session) {
           setSuccess(true);
-          setMessage("Pendaftaran berhasil. Periksa email untuk mengonfirmasi akun sebelum masuk.");
+          setMessage("Akun berhasil dibuat, tetapi sesi belum tersedia. Pastikan Confirm email dinonaktifkan di pengaturan Supabase.");
           return;
         }
       } else {
@@ -65,6 +66,7 @@ export default function AuthPage() {
           <form className="auth-form" onSubmit={submit}>
             <label htmlFor="email">Email</label>
             <input id="email" type="email" autoComplete="email" placeholder="nama@email.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            {mode === "signup" && <div className="auth-role-picker"><span>Daftar sebagai</span><div><button type="button" className={role === "student" ? "selected" : ""} aria-pressed={role === "student"} onClick={() => setRole("student")}>Siswa</button><button type="button" className={role === "teacher" ? "selected" : ""} aria-pressed={role === "teacher"} onClick={() => setRole("teacher")}>Guru</button></div></div>}
             <div className="auth-password-label"><label htmlFor="password">Kata sandi</label>{mode === "signup" && <span>Min. 8 karakter</span>}</div>
             <input id="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="Masukkan kata sandi" value={password} onChange={(event) => setPassword(event.target.value)} minLength={mode === "signup" ? 8 : undefined} required />
             {message && <p className={success ? "auth-message auth-message-success" : "auth-message"} role="status">{message}</p>}

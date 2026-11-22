@@ -40,19 +40,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 The initial Supabase schema and row-level security policies are in `supabase/migrations`. Apply them to a Supabase project before connecting the application:
 
-1. Create a Supabase project and copy its project URL and publishable (or anon) key.
+1. Create a Supabase project and copy its project URL and publishable (or anon) key. In Authentication > Sign In / Providers, disable Confirm email to let new users sign in immediately. Hosted projects require this dashboard setting; `supabase/config.toml` controls local development.
 2. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. Install the Supabase CLI and link this folder with `supabase link --project-ref <project-ref>`. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel for every deployment environment, then redeploy. Set the Supabase Auth Site URL to your deployed domain and add it to the allowed redirect URLs.
-4. Apply the schema with `supabase db push`.
-5. Register a user through Supabase Auth. New profiles are students by default. Promote a trusted teacher from the Supabase SQL editor:
-
-```sql
-update public.profiles p
-set role = 'teacher'
-from auth.users u
-where u.id = p.id and u.email = 'teacher@example.com';
-```
+4. Apply all database migrations, including `20261122000000_signup_role.sql`, with `supabase db push`.
+5. Register through the app. Signup lets the user select a student or teacher profile. Teacher selection is public and grants teacher permissions, so add an invitation gate if teacher access must be restricted.
 
 The migration stores quiz metadata, questions, answer keys, and the latest submission per student and quiz. Students cannot read the answer-key table or directly write scores; submissions are scored by the `submit_quiz` database function. Teachers can manage only their own quizzes and see results for those quizzes.
 
-Login and signup use Supabase Auth. New accounts receive the default `student` profile. Promote trusted teachers with the SQL above; do not accept teacher roles from public signup. Classroom quiz data is still stored in browser `localStorage` and is not yet synchronized with Supabase. Do not put a Supabase service-role key in browser code.
+Login and signup use Supabase Auth. New accounts receive the selected profile role. Classroom quiz data is still stored in browser `localStorage` and is not yet synchronized with Supabase. Do not put a Supabase service-role key in browser code.
