@@ -84,7 +84,7 @@ export default function TeacherPage() {
     if (editingQuizId && !existingQuiz) { setNotice("Kuis ini hanya dapat diedit oleh guru pembuatnya."); return; }
     const quiz: ClassroomQuiz = {
       id: existingQuiz?.id ?? crypto.randomUUID(), title: String(data.get("title")), topic: String(data.get("topic")),
-      questions: questions.map(({ id: _id, ...question }) => ({ ...question, question: question.question.trim(), options: question.options.map((option) => option.trim()), explanation: question.explanation.trim() })),
+      questions: questions.map((question) => ({ question: question.question.trim(), options: question.options.map((option) => option.trim()), correctIndex: question.correctIndex, explanation: question.explanation.trim() })),
       createdAt: existingQuiz?.createdAt ?? Date.now(),
       durationMinutes: Number(data.get("durationMinutes")),
       createdBy: teacherEmail,

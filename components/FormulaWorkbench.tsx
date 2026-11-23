@@ -55,7 +55,7 @@ export function FormulaWorkbench({ value, onChange, onClose }: FormulaWorkbenchP
   const changeRef = useRef(onChange);
   const previewRef = useRef<HTMLDivElement>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [latex, setLatex] = useState(value);
+  const latex = value;
   const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => { changeRef.current = onChange; }, [onChange]);
@@ -63,6 +63,7 @@ export function FormulaWorkbench({ value, onChange, onClose }: FormulaWorkbenchP
   // Create the MathLive custom element after the CDN script registers it.
   useEffect(() => {
     let cancelled = false;
+    const keyboardDock = dockRef.current;
     const mountField = async () => {
       await customElements.whenDefined("math-field");
       if (cancelled || !hostRef.current) return;
@@ -72,20 +73,18 @@ export function FormulaWorkbench({ value, onChange, onClose }: FormulaWorkbenchP
       field.setAttribute("smart-mode", "on");
       field.value = value;
       field.addEventListener("input", () => {
-        setLatex(field.value);
         changeRef.current(field.value);
       });
       hostRef.current.replaceChildren(field);
       fieldRef.current = field;
     };
     void mountField();
-    return () => { cancelled = true; if (window.mathVirtualKeyboard?.container === dockRef.current) window.mathVirtualKeyboard.hide(); fieldRef.current = null; };
+    return () => { const keyboard = window.mathVirtualKeyboard; cancelled = true; if (keyboard && keyboard.container === keyboardDock) keyboard.hide(); fieldRef.current = null; };
     // The field is created once; value changes are synced by the next effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    setLatex(value);
     if (fieldRef.current && fieldRef.current.value !== value) fieldRef.current.value = value;
   }, [value]);
 
@@ -108,7 +107,6 @@ export function FormulaWorkbench({ value, onChange, onClose }: FormulaWorkbenchP
     if (!field) return;
     field.focus();
     field.insert(latexFragment);
-    setLatex(field.value);
     changeRef.current(field.value);
   }
 
@@ -116,7 +114,6 @@ export function FormulaWorkbench({ value, onChange, onClose }: FormulaWorkbenchP
     if (!next || !fieldRef.current) return;
     fieldRef.current.value = next;
     fieldRef.current.focus();
-    setLatex(next);
     changeRef.current(next);
   }
 
