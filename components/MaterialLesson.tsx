@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Material, materials } from "@/lib/materials";
 import { supabase } from "@/lib/supabase";
 import { MaterialIllustration } from "@/components/MaterialIllustration";
+import { MaterialQuiz } from "@/components/MaterialQuiz";
+import { materialQuizzes } from "@/lib/materialQuizzes";
 
 type MaterialLessonProps = { material: Material };
 
@@ -35,7 +37,7 @@ export function MaterialLesson({ material }: MaterialLessonProps) {
   return <main className="material-page">
     <header className="classroom-header material-header">
       <Link href="/belajar" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link>
-      <nav><Link href="/belajar">Ruang belajar</Link><Link href="/belajar#kuis-siswa">Kuis 10 soal</Link></nav>
+      <nav><Link href="/belajar">Ruang belajar</Link><Link href="/belajar#kuis-siswa">Kuis dari guru</Link></nav>
     </header>
     <article className="material-lesson">
       <Link className="material-back-link" href="/belajar#materi-siswa">← Semua materi</Link>
@@ -87,9 +89,9 @@ export function MaterialLesson({ material }: MaterialLessonProps) {
 
       <nav className="material-pagination" aria-label="Navigasi materi">
         {previous ? <Link href={`/belajar/materi/${previous.slug}`}><small>Materi sebelumnya</small><strong>← {previous.shortTitle}</strong></Link> : <span />}
-        {next ? <Link href={`/belajar/materi/${next.slug}`}><small>Materi berikutnya</small><strong>{next.shortTitle} →</strong></Link> : <Link href="/belajar#kuis-siswa"><small>Materi selesai</small><strong>Kerjakan kuis →</strong></Link>}
+        {next ? <Link href={`/belajar/materi/${next.slug}`}><small>Materi berikutnya</small><strong>{next.shortTitle} →</strong></Link> : <a href="#latihan-materi"><small>Materi selesai</small><strong>Kerjakan latihan →</strong></a>}
       </nav>
-      <Link className="material-quiz-cta" href="/belajar#kuis-siswa"><span><small>SUDAH MEMAHAMI MATERI?</small><strong>Uji pemahamanmu dengan kuis 10 soal.</strong></span><b>Mulai kuis →</b></Link>
+      <MaterialQuiz title={material.shortTitle} questions={materialQuizzes[material.slug] ?? []} />
     </article>
     <footer className="classroom-footer"><span>FisikaQuest <i>·</i> Belajar dengan rasa ingin tahu.</span><Link href="/belajar">Kembali ke ruang belajar</Link></footer>
   </main>;

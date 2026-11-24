@@ -36,7 +36,7 @@ export default function StudentPage() {
       if (error || !session?.user) { router.replace("/auth"); return; }
       const user = session.user.email ?? session.user.id;
       setEmail(user);
-      setQuizzes(loadQuizzes().filter((quiz) => !quiz.expiresAt || quiz.expiresAt > Date.now()));
+      setQuizzes(loadQuizzes().filter((quiz) => Boolean(quiz.createdBy) && (!quiz.expiresAt || quiz.expiresAt > Date.now())));
       try { setAttempts(JSON.parse(localStorage.getItem(`fisikaquest-attempts-${user}`) || "{}")); }
       catch { setAttempts({}); }
       setAuthReady(true);
