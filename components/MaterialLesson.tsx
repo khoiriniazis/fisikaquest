@@ -38,7 +38,7 @@ export function MaterialLesson({ material }: MaterialLessonProps) {
   return <main className="material-page">
     <header className="classroom-header material-header">
       <BrandLogo href="/" className="classroom-brand" />
-      <nav><Link href="/belajar">Ruang belajar</Link><Link href="/belajar#kuis-siswa">Kuis dari guru</Link></nav>
+      <nav><Link href="/belajar">Ruang belajar</Link><Link href="/belajar#kuis-siswa">Kuis dari guru</Link><Link href="/profil">Profil</Link></nav>
     </header>
     <article className="material-lesson">
       <Link className="material-back-link" href="/belajar#materi-siswa">← Semua materi</Link>
