@@ -39,7 +39,6 @@ export default function TeacherPage() {
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [activeFormula, setActiveFormula] = useState<string | null>(null);
-  const [savedPayload, setSavedPayload] = useState("");
   const [teacherEmail, setTeacherEmail] = useState("");
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -93,7 +92,6 @@ export default function TeacherPage() {
     const next = existingQuiz ? quizzes.map((item) => item.id === quiz.id ? quiz : item) : [quiz, ...quizzes];
     localStorage.setItem(QUIZZES_KEY, JSON.stringify(next));
     setQuizzes(next);
-    setSavedPayload(JSON.stringify({ title: quiz.title, category: quiz.topic, latex: quiz.questions.flatMap((item) => [item.question, ...item.options, item.explanation]).filter(Boolean).join(String.fromCharCode(10)), questions: quiz.questions }, null, 2));
     event.currentTarget.reset();
     setEditingQuizId(null);
     setQuestions([newQuestion()]);
@@ -127,7 +125,7 @@ export default function TeacherPage() {
         </fieldset>)}</div>
         <button className="add-question-button" type="button" onClick={() => setQuestions((current) => [...current, newQuestion()])}>＋ Tambah soal</button>
         {notice&&<div className="teacher-notice" role="status">{notice}</div>}
-        <button className="teacher-submit">{editingQuizId ? "Simpan perubahan" : "Terbitkan kuis"} <span>?</span></button>{editingQuizId && <button type="button" className="add-question-button" onClick={() => { setEditingQuizId(null); formRef.current?.reset(); setQuestions([newQuestion()]); }}>Batal edit</button>}{savedPayload && <div className="formula-json-result"><strong>JSON simulasi yang siap dikirim</strong><pre>{savedPayload}</pre></div>}
+        <button className="teacher-submit">{editingQuizId ? "Simpan perubahan" : "Terbitkan kuis"} <span>?</span></button>{editingQuizId && <button type="button" className="add-question-button" onClick={() => { setEditingQuizId(null); formRef.current?.reset(); setQuestions([newQuestion()]); }}>Batal edit</button>}
       </form>
       <aside className="teacher-list"><div className="teacher-list-heading"><div><span className="classroom-kicker">BANK KUIS</span><h2>Kuis tersedia</h2></div><span>{ready?ownQuizzes.length:0}</span></div>{ownQuizzes.map((quiz)=><article className="teacher-quiz-row" key={quiz.id}><div><span>{quiz.topic} · {quiz.questions.length} soal · {quiz.durationMinutes ?? 15} menit ·</span><h3>{quiz.title}</h3><p>{quiz.questions[0]?.question}</p><p className="teacher-expiry">{quiz.expiresAt ? `Tenggat ${new Date(quiz.expiresAt).toLocaleString("id-ID")}` : "Tanpa tenggat"}</p></div>{quiz.createdBy === teacherEmail && <div className="teacher-quiz-actions"><button type="button" onClick={() => { const form=formRef.current; if (!form) return; const title=form.elements.namedItem("title") as HTMLInputElement; const topic=form.elements.namedItem("topic") as HTMLSelectElement; const duration=form.elements.namedItem("durationMinutes") as HTMLInputElement; const expiry=form.elements.namedItem("expiresAt") as HTMLInputElement; title.value=quiz.title; topic.value=quiz.topic; duration.value=String(quiz.durationMinutes ?? 15); expiry.value=quiz.expiresAt ? new Date(quiz.expiresAt-new Date(quiz.expiresAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : ""; setQuestions(quiz.questions.map((question)=>({...question,id:crypto.randomUUID()}))); setEditingQuizId(quiz.id); form.scrollIntoView({behavior:"smooth",block:"start"}); }}>Edit</button><button type="button" onClick={()=>removeQuiz(quiz.id)} aria-label={`Hapus ${quiz.title}`}>Hapus</button><button type="button" onClick={()=>setResultsQuizId((current)=>current===quiz.id?null:quiz.id)} aria-expanded={resultsQuizId===quiz.id} aria-controls={`hasil-${quiz.id}`}>Hasil ({submissions[quiz.id]?.length ?? 0})</button></div>}{resultsQuizId===quiz.id && <div className="teacher-results" id={`hasil-${quiz.id}`}><h4>Daftar siswa</h4>{(submissions[quiz.id]?.length ?? 0) === 0 ? <p>Belum ada siswa yang mengisi kuis ini.</p> : <ul>{submissions[quiz.id].map((submission)=><li key={submission.student}><span>{submission.student}<small>{submission.completedAt ? new Date(submission.completedAt).toLocaleString("id-ID") : "Waktu tidak tersedia"}</small></span><strong>{submission.score} / 100</strong></li>)}</ul>}</div>}</article>)}</aside></div>
     </section><footer className="classroom-footer"><span>FisikaQuest <i>·</i> Materi dan kuis untuk belajar bermakna.</span><Link href="/">Kembali ke beranda</Link></footer>
