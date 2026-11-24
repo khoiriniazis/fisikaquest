@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { supabase } from "@/lib/supabase";
+import { saveUserDisplayName } from "@/lib/userNames";
 
 type UserRole = "student" | "teacher";
 
@@ -35,6 +36,7 @@ export default function ProfilePage() {
         const savedName = data?.display_name?.trim();
         const initialName = savedName || generatedName;
         setDisplayName(initialName);
+        saveUserDisplayName(userEmail, initialName);
         if (!savedName) {
           const { error: updateError } = await supabase.from("profiles").update({ display_name: initialName }).eq("id", session.user.id);
           if (updateError && active) setMessage("Nama otomatis belum tersimpan. Coba simpan nama profil ini.");
@@ -59,7 +61,7 @@ export default function ProfilePage() {
     const { error } = await supabase.from("profiles").update({ display_name: name }).eq("id", user.id);
     setSaving(false);
     if (error) setMessage("Nama belum berhasil disimpan. Silakan coba lagi.");
-    else { setDisplayName(name); setMessage("Nama profil berhasil diperbarui."); }
+    else { setDisplayName(name); saveUserDisplayName(email, name); setMessage("Nama profil berhasil diperbarui."); }
   }
 
   if (!ready) return null;

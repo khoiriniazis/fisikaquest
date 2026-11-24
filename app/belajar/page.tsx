@@ -8,6 +8,7 @@ import { ClassroomQuiz, loadQuizzes } from "../../lib/classroom";
 import { supabase } from "@/lib/supabase";
 import { materials } from "@/lib/materials";
 import { FormulaText } from "@/components/FormulaText";
+import { saveUserDisplayName } from "@/lib/userNames";
 
 type Attempt = { score: number; answers: number[]; completedAt: number };
 type Attempts = Record<string, Attempt>;
@@ -41,7 +42,8 @@ export default function StudentPage() {
       setEmail(user);
       setDisplayName(user.split("@")[0] || "Siswa");
       const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", session.user.id).maybeSingle();
-      if (active && profile?.display_name) setDisplayName(profile.display_name);
+      const name = profile?.display_name?.trim() || user.split("@")[0] || "Siswa";
+      if (active) { setDisplayName(name); saveUserDisplayName(user, name); }
       setQuizzes(loadQuizzes().filter((quiz) => Boolean(quiz.createdBy) && (!quiz.expiresAt || quiz.expiresAt > Date.now())));
       try { setAttempts(JSON.parse(localStorage.getItem(`fisikaquest-attempts-${user}`) || "{}")); }
       catch { setAttempts({}); }
@@ -101,7 +103,7 @@ export default function StudentPage() {
 
   return <main className="classroom-page">
     <header className="classroom-header"><BrandLogo href="/" className="classroom-brand" /><nav><a href="#materi-siswa">Materi</a><a href="#kuis-siswa">Kuis</a><Link href="/profil" className="student-email">{displayName}</Link><button onClick={logout}>Keluar</button></nav></header>
-    <section className="classroom-section quiz-section" id="kuis-siswa"><div className="classroom-section-heading"><div><span className="classroom-kicker">TANTANGAN DARI GURU</span><h2>Waktunya <em>mencoba.</em></h2></div><p>Kamu bisa memilih dan mengubah jawaban sampai menekan tombol submit di akhir kuis.</p></div><div className="student-quiz-grid">{quizzes.map((quiz,index)=>{const attempt=attempts[quiz.id];return <article className={`student-quiz-card${attempt?" student-quiz-completed":""}`} key={quiz.id}><div className="student-quiz-icon">0{index+1}</div><span className="quiz-topic-label">{quiz.topic}</span>{attempt&&<span className="student-complete-badge">✓ Selesai · {attempt.score}/100</span>}<h3>{quiz.title}</h3><p>Guru: {quiz.createdBy || "Guru FisikaQuest"}</p><p>{quiz.questions.length} soal · estimasi {Math.max(1,quiz.questions.length*2)} menit</p><button onClick={()=>openQuiz(quiz)}>{attempt?"Lihat hasil":"Mulai kuis"}<span>↗</span></button></article>;})}{quizzes.length===0&&<p className="empty-quizzes">Belum ada kuis. Cek kembali nanti saat guru sudah membagikan kuis.</p>}</div></section>
+    <section className="classroom-section quiz-section" id="kuis-siswa"><div className="classroom-section-heading"><div><span className="classroom-kicker">TANTANGAN DARI GURU</span><h2>Waktunya <em>mencoba.</em></h2></div><p>Kamu bisa memilih dan mengubah jawaban sampai menekan tombol submit di akhir kuis.</p></div><div className="student-quiz-grid">{quizzes.map((quiz,index)=>{const attempt=attempts[quiz.id];return <article className={`student-quiz-card${attempt?" student-quiz-completed":""}`} key={quiz.id}><div className="student-quiz-icon">0{index+1}</div><span className="quiz-topic-label">{quiz.topic}</span>{attempt&&<span className="student-complete-badge">✓ Selesai · {attempt.score}/100</span>}<h3>{quiz.title}</h3><p>Guru: {quiz.createdByName || "Guru FisikaQuest"}</p><p>{quiz.questions.length} soal · estimasi {Math.max(1,quiz.questions.length*2)} menit</p><button onClick={()=>openQuiz(quiz)}>{attempt?"Lihat hasil":"Mulai kuis"}<span>↗</span></button></article>;})}{quizzes.length===0&&<p className="empty-quizzes">Belum ada kuis. Cek kembali nanti saat guru sudah membagikan kuis.</p>}</div></section>
     <section className="classroom-hero"><div><span className="classroom-kicker">RUANG BELAJAR SISWA</span><h1>Halo, <em>{displayName || "pembelajar"}.</em><br/>Siap belajar hari ini?</h1><p>Pelajari konsep usaha dan energi, lalu uji pemahamanmu lewat kuis dari guru.</p><a className="classroom-cta" href="#materi-siswa">Jelajahi materi <span>↓</span></a></div><div className="classroom-hero-visual"><div className="hero-visual-orbit"/><div className="hero-visual-core">W</div><span className="hero-visual-chip">W = F × s</span><small>USAHA &amp; ENERGI</small></div></section>
     <section className="classroom-section" id="materi-siswa"><div className="classroom-section-heading"><div><span className="classroom-kicker">PETA BELAJAR</span><h2>Materi <em>pilihan.</em></h2></div><p>Enam materi inti, lengkap dengan rumus dan contoh hitung untuk membantu memahami usaha dan energi.</p></div><div className="topic-grid">{materials.map((topic)=><article className={`topic-card topic-${topic.tint}`} key={topic.slug}><div className="topic-top"><span>{topic.number}</span><b>{topic.formula}</b></div><h3>{topic.title}</h3><p>{topic.summary}</p><Link href={`/belajar/materi/${topic.slug}`}>Buka materi lengkap <span>↗</span></Link></article>)}</div></section>
 

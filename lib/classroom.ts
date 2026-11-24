@@ -14,6 +14,7 @@ export type ClassroomQuiz = {
   durationMinutes?: number;
   expiresAt?: number;
   createdBy?: string;
+  createdByName?: string;
 };
 
 export const QUIZZES_KEY = "fisikaquest-quizzes";
@@ -30,6 +31,7 @@ export function loadQuizzes(): ClassroomQuiz[] {
       durationMinutes: quiz.durationMinutes == null ? undefined : Number(quiz.durationMinutes),
       expiresAt: quiz.expiresAt == null ? undefined : Number(quiz.expiresAt),
       createdBy: quiz.createdBy == null ? undefined : String(quiz.createdBy),
+      createdByName: quiz.createdByName == null ? undefined : String(quiz.createdByName),
       questions: Array.isArray(quiz.questions) ? quiz.questions as QuizQuestion[] : typeof quiz.question === "string"
         ? [{ question: quiz.question, options: Array.isArray(quiz.options) ? quiz.options as string[] : [], correctIndex: Number(quiz.correctIndex ?? 0), explanation: String(quiz.explanation ?? "") }]
         : [],

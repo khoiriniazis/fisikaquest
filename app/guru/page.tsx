@@ -7,9 +7,10 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { ClassroomQuiz, loadQuizzes, QUIZZES_KEY, QuizQuestion } from "../../lib/classroom";
 import { supabase } from "@/lib/supabase";
 import { FormulaWorkbench } from "@/components/FormulaWorkbench";
+import { getUserDisplayName } from "@/lib/userNames";
 
 type DraftQuestion = QuizQuestion & { id: string };
-type QuizSubmission = { student: string; score: number; completedAt: number };
+type QuizSubmission = { student: string; studentId: string; score: number; completedAt: number };
 type QuizSubmissions = Record<string, QuizSubmission[]>;
 const loadQuizSubmissions = (quizzes: ClassroomQuiz[]): QuizSubmissions => {
   const submissions: QuizSubmissions = {};
@@ -22,7 +23,7 @@ const loadQuizSubmissions = (quizzes: ClassroomQuiz[]): QuizSubmissions => {
       const attempts = JSON.parse(localStorage.getItem(key) || "{}") as Record<string, { score?: number; completedAt?: number }>;
       for (const [quizId, attempt] of Object.entries(attempts)) {
         if (!quizIds.has(quizId) || typeof attempt?.score !== "number") continue;
-        (submissions[quizId] ??= []).push({ student, score: attempt.score, completedAt: Number(attempt.completedAt) || 0 });
+        (submissions[quizId] ??= []).push({ student: getUserDisplayName(student), studentId: student, score: attempt.score, completedAt: Number(attempt.completedAt) || 0 });
       }
     } catch { /* Abaikan data hasil yang tidak valid. */ }
   }
@@ -41,6 +42,7 @@ export default function TeacherPage() {
   const [notice, setNotice] = useState("");
   const [activeFormula, setActiveFormula] = useState<string | null>(null);
   const [teacherEmail, setTeacherEmail] = useState("");
+  const [teacherDisplayName, setTeacherDisplayName] = useState("");
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -51,14 +53,18 @@ export default function TeacherPage() {
       if (!active) return;
       if (error || !session?.user) { router.replace("/auth"); return; }
       const { data: profile, error: profileError } = await supabase
-        .from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+        .from("profiles").select("role, display_name").eq("id", session.user.id).maybeSingle();
       if (!active) return;
       if (profileError || profile?.role !== "teacher") { router.replace("/belajar"); return; }
       const user = session.user.email ?? session.user.id;
       setTeacherEmail(user);
+      const displayName = profile?.display_name?.trim() || user.split("@")[0] || "Guru";
+      setTeacherDisplayName(displayName);
       const allQuizzes = loadQuizzes();
-      setQuizzes(allQuizzes);
-      setSubmissions(loadQuizSubmissions(allQuizzes.filter((quiz) => quiz.createdBy === user)));
+      const updatedQuizzes = allQuizzes.map((quiz) => quiz.createdBy === user ? { ...quiz, createdByName: displayName } : quiz);
+      if (updatedQuizzes.some((quiz, index) => quiz.createdByName !== allQuizzes[index]?.createdByName)) localStorage.setItem(QUIZZES_KEY, JSON.stringify(updatedQuizzes));
+      setQuizzes(updatedQuizzes);
+      setSubmissions(loadQuizSubmissions(updatedQuizzes.filter((quiz) => quiz.createdBy === user)));
       setQuestions([newQuestion()]);
       setReady(true);
     }
@@ -88,6 +94,7 @@ export default function TeacherPage() {
       createdAt: existingQuiz?.createdAt ?? Date.now(),
       durationMinutes: Number(data.get("durationMinutes")),
       createdBy: teacherEmail,
+      createdByName: teacherDisplayName,
       expiresAt: data.get("expiresAt") ? new Date(String(data.get("expiresAt"))).getTime() : undefined,
     };
     const next = existingQuiz ? quizzes.map((item) => item.id === quiz.id ? quiz : item) : [quiz, ...quizzes];
@@ -128,7 +135,7 @@ export default function TeacherPage() {
         {notice&&<div className="teacher-notice" role="status">{notice}</div>}
         <button className="teacher-submit">{editingQuizId ? "Simpan perubahan" : "Terbitkan kuis"} <span>?</span></button>{editingQuizId && <button type="button" className="add-question-button" onClick={() => { setEditingQuizId(null); formRef.current?.reset(); setQuestions([newQuestion()]); }}>Batal edit</button>}
       </form>
-      <aside className="teacher-list"><div className="teacher-list-heading"><div><span className="classroom-kicker">BANK KUIS</span><h2>Kuis tersedia</h2></div><span>{ready?ownQuizzes.length:0}</span></div>{ownQuizzes.map((quiz)=><article className="teacher-quiz-row" key={quiz.id}><div><span>{quiz.topic} · {quiz.questions.length} soal · {quiz.durationMinutes ?? 15} menit ·</span><h3>{quiz.title}</h3><p>{quiz.questions[0]?.question}</p><p className="teacher-expiry">{quiz.expiresAt ? `Tenggat ${new Date(quiz.expiresAt).toLocaleString("id-ID")}` : "Tanpa tenggat"}</p></div>{quiz.createdBy === teacherEmail && <div className="teacher-quiz-actions"><button type="button" onClick={() => { const form=formRef.current; if (!form) return; const title=form.elements.namedItem("title") as HTMLInputElement; const topic=form.elements.namedItem("topic") as HTMLSelectElement; const duration=form.elements.namedItem("durationMinutes") as HTMLInputElement; const expiry=form.elements.namedItem("expiresAt") as HTMLInputElement; title.value=quiz.title; topic.value=quiz.topic; duration.value=String(quiz.durationMinutes ?? 15); expiry.value=quiz.expiresAt ? new Date(quiz.expiresAt-new Date(quiz.expiresAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : ""; setQuestions(quiz.questions.map((question)=>({...question,id:crypto.randomUUID()}))); setEditingQuizId(quiz.id); form.scrollIntoView({behavior:"smooth",block:"start"}); }}>Edit</button><button type="button" onClick={()=>removeQuiz(quiz.id)} aria-label={`Hapus ${quiz.title}`}>Hapus</button><button type="button" onClick={()=>setResultsQuizId((current)=>current===quiz.id?null:quiz.id)} aria-expanded={resultsQuizId===quiz.id} aria-controls={`hasil-${quiz.id}`}>Hasil ({submissions[quiz.id]?.length ?? 0})</button></div>}{resultsQuizId===quiz.id && <div className="teacher-results" id={`hasil-${quiz.id}`}><h4>Daftar siswa</h4>{(submissions[quiz.id]?.length ?? 0) === 0 ? <p>Belum ada siswa yang mengisi kuis ini.</p> : <ul>{submissions[quiz.id].map((submission)=><li key={submission.student}><span>{submission.student}<small>{submission.completedAt ? new Date(submission.completedAt).toLocaleString("id-ID") : "Waktu tidak tersedia"}</small></span><strong>{submission.score} / 100</strong></li>)}</ul>}</div>}</article>)}</aside></div>
+      <aside className="teacher-list"><div className="teacher-list-heading"><div><span className="classroom-kicker">BANK KUIS</span><h2>Kuis tersedia</h2></div><span>{ready?ownQuizzes.length:0}</span></div>{ownQuizzes.map((quiz)=><article className="teacher-quiz-row" key={quiz.id}><div><span>{quiz.topic} · {quiz.questions.length} soal · {quiz.durationMinutes ?? 15} menit ·</span><h3>{quiz.title}</h3><p>{quiz.questions[0]?.question}</p><p className="teacher-expiry">{quiz.expiresAt ? `Tenggat ${new Date(quiz.expiresAt).toLocaleString("id-ID")}` : "Tanpa tenggat"}</p></div>{quiz.createdBy === teacherEmail && <div className="teacher-quiz-actions"><button type="button" onClick={() => { const form=formRef.current; if (!form) return; const title=form.elements.namedItem("title") as HTMLInputElement; const topic=form.elements.namedItem("topic") as HTMLSelectElement; const duration=form.elements.namedItem("durationMinutes") as HTMLInputElement; const expiry=form.elements.namedItem("expiresAt") as HTMLInputElement; title.value=quiz.title; topic.value=quiz.topic; duration.value=String(quiz.durationMinutes ?? 15); expiry.value=quiz.expiresAt ? new Date(quiz.expiresAt-new Date(quiz.expiresAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : ""; setQuestions(quiz.questions.map((question)=>({...question,id:crypto.randomUUID()}))); setEditingQuizId(quiz.id); form.scrollIntoView({behavior:"smooth",block:"start"}); }}>Edit</button><button type="button" onClick={()=>removeQuiz(quiz.id)} aria-label={`Hapus ${quiz.title}`}>Hapus</button><button type="button" onClick={()=>setResultsQuizId((current)=>current===quiz.id?null:quiz.id)} aria-expanded={resultsQuizId===quiz.id} aria-controls={`hasil-${quiz.id}`}>Hasil ({submissions[quiz.id]?.length ?? 0})</button></div>}{resultsQuizId===quiz.id && <div className="teacher-results" id={`hasil-${quiz.id}`}><h4>Daftar siswa</h4>{(submissions[quiz.id]?.length ?? 0) === 0 ? <p>Belum ada siswa yang mengisi kuis ini.</p> : <ul>{submissions[quiz.id].map((submission)=><li key={submission.studentId}><span>{submission.student}<small>{submission.completedAt ? new Date(submission.completedAt).toLocaleString("id-ID") : "Waktu tidak tersedia"}</small></span><strong>{submission.score} / 100</strong></li>)}</ul>}</div>}</article>)}</aside></div>
     </section><footer className="classroom-footer"><span>FisikaQuest <i>·</i> Materi dan kuis untuk belajar bermakna.</span><Link href="/">Kembali ke beranda</Link></footer>
   </main>;
 }
