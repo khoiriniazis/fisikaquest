@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Material, materials } from "@/lib/materials";
@@ -36,7 +37,7 @@ export function MaterialLesson({ material }: MaterialLessonProps) {
 
   return <main className="material-page">
     <header className="classroom-header material-header">
-      <Link href="/belajar" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link>
+      <BrandLogo href="/" className="classroom-brand" />
       <nav><Link href="/belajar">Ruang belajar</Link><Link href="/belajar#kuis-siswa">Kuis dari guru</Link></nav>
     </header>
     <article className="material-lesson">

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { materials } from "@/lib/materials";
+import { materialQuizzes } from "@/lib/materialQuizzes";
+import { FormulaText } from "@/components/FormulaText";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const lessons = [
   { icon: "✣", title: "Konsep Usaha dalam Fisika", description: "Kenali hubungan gaya dan perpindahan melalui contoh yang dekat dengan keseharian.", level: "Dasar" },
@@ -8,21 +12,17 @@ const lessons = [
   { icon: "△", title: "Energi Potensial", description: "Jelajahi energi tersimpan karena posisi dan ketinggian.", level: "Menengah" },
   { icon: "◉", title: "Hukum Kekekalan Energi Mekanik", description: "Ikuti perubahan energi saat benda bergerak.", level: "Menengah" },
 ];
-const answers = [
-  "Usaha selalu besar karena gaya yang diberikan besar.",
-  "Usaha nol karena tidak ada perpindahan.",
-  "Usaha bertambah jika dorongan semakin lama.",
-  "Usaha sama dengan energi kinetik orang tersebut.",
-];
-
 function Brand() {
-  return <a className="brand" href="#home" aria-label="FisikaQuest, beranda"><span className="brand-mark">⚛</span><span>Fisika<span className="brand-blue">Quest</span></span></a>;
+  return <BrandLogo href="#home" />;
 }
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selectedMaterialSlug, setSelectedMaterialSlug] = useState<string | null>(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [submitted, setSubmitted] = useState(false);
   const nav = [["Home", "#home"], ["Materi", "#materi"], ["Tantangan", "#tantangan"], ["Tentang", "#tentang"]];
 
   return <main id="home" className="min-h-screen bg-white text-slate-800">
@@ -47,8 +47,8 @@ export default function Home() {
     </section>
 
     <section className="stats wrap" aria-label="Ringkasan pembelajaran">
-      <article><span className="stat-icon icon-blue">▤</span><span><b>04</b><small>Materi konsep</small></span><label>TOPIK</label></article>
-      <article><span className="stat-icon icon-yellow">◎</span><span><b>10</b><small>Tantangan</small></span><label>SOAL</label></article>
+      <article><span className="stat-icon icon-blue">▤</span><span><b>06</b><small>Materi konsep</small></span><label>TOPIK</label></article>
+      <article><span className="stat-icon icon-yellow">◎</span><span><b>30</b><small>Soal latihan</small></span><label>SOAL</label></article>
       <article><span className="stat-icon icon-mint">⌁</span><span><b>0<span className="percent">%</span></b><small>Progres belajar</small></span><div className="progress-mini" /></article>
       <p>Angka demonstrasi untuk memulai petualangan belajarmu.</p>
     </section>
@@ -57,7 +57,7 @@ export default function Home() {
       <div className="lesson-grid">{lessons.map((lesson, index) => <article className="lesson-card bg-white transition-all duration-200" key={lesson.title}><div className="lesson-top"><span className={`lesson-icon tone-${index}`}>{lesson.icon}</span><small>0{index + 1}</small></div><h3>{lesson.title}</h3><p>{lesson.description}</p><div className="lesson-bottom"><span><i />{lesson.level}</span><a href="/belajar#materi-siswa">Pelajari <span aria-hidden="true">↗</span></a></div></article>)}</div>
     </div></section>
 
-    <section className="challenge wrap" id="tantangan"><div className="challenge-card"><div className="challenge-copy"><small>✦ &nbsp; MISI PERTAMA</small><h2>Uji<br />Pemahamanmu.</h2><p>Bisakah kamu membedakan usaha dalam kehidupan sehari-hari dengan usaha dalam konsep fisika?</p><button className="button button-yellow" onClick={() => { setSelected(null); setQuizOpen(true); }}>Mulai Tantangan <span>↗</span></button><div className="challenge-meta">◎ &nbsp; 1 pertanyaan &nbsp; · &nbsp; Konsep dasar</div></div>
+    <section className="challenge wrap" id="tantangan"><div className="challenge-card"><div className="challenge-copy"><small>✦ &nbsp; MISI PERTAMA</small><h2>Uji<br />Pemahamanmu.</h2><p>Pilih satu dari enam materi, lalu kerjakan lima soal pilihan ganda untuk menguji pemahamanmu.</p><button className="button button-yellow" onClick={() => { setSelectedMaterialSlug(null); setQuestionIndex(0); setAnswers([]); setSubmitted(false); }}>Mulai Tantangan <span>↗</span></button><div className="challenge-meta">◎ &nbsp; 5 soal &nbsp; · &nbsp; Pilih materi</div></div>
         <div className="challenge-art" aria-hidden="true"><div className="challenge-orb"><span>🧍</span><b>▥</b></div><div className="push-lines">› ›</div><div className="answer-tag"><b>F = ?</b><small>Saat tak ada perpindahan</small></div><span className="challenge-star">✦</span></div>
       </div></section>
 
@@ -69,10 +69,33 @@ export default function Home() {
 
     <footer><div className="wrap footer-inner"><div><Brand /><p>Belajar fisika dengan rasa ingin tahu.<br />Satu konsep, satu petualangan.</p></div><span>Media Pembelajaran Fisika SMA <i>✳</i> Usaha &amp; Energi</span><a className="teacher-entry" href="/guru">Area guru ↗</a></div></footer>
 
-    {quizOpen && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setQuizOpen(false); }}><section className="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="quiz-title"><button className="modal-close" aria-label="Tutup tantangan" onClick={() => setQuizOpen(false)}>×</button><div className="quiz-kicker">◎ &nbsp; MISI PERTAMA · USAHA</div><div className="quiz-progress" /><small className="question-count">PERTANYAAN 1 DARI 1</small><h2 id="quiz-title">Seseorang mendorong tembok dengan kuat, tetapi tembok tidak berpindah. Menurut konsep usaha dalam fisika, berapakah usaha yang dilakukan pada tembok?</h2>
-      <div className="answer-list">{answers.map((answer, index) => <button key={answer} className={`answer-option${selected === index ? index === 1 ? " answer-correct" : " answer-wrong" : ""}`} aria-pressed={selected === index} onClick={() => setSelected(index)}><b>{String.fromCharCode(65 + index)}</b><span>{answer}</span>{selected === index && <strong>{index === 1 ? "✓" : "×"}</strong>}</button>)}</div>
-      {selected !== null && <div className={`feedback ${selected === 1 ? "feedback-good" : "feedback-try"}`} role="status"><strong>{selected === 1 ? "Tepat! Usaha pada tembok bernilai nol." : "Belum tepat. Coba pikirkan perpindahannya."}</strong><p>Dalam fisika, usaha terjadi ketika gaya menyebabkan perpindahan. Tembok tetap diam, jadi perpindahannya nol dan usaha pada tembok juga nol.</p></div>}
-      <div className="quiz-footer"><span>✦ Belajar itu proses.</span><button onClick={() => setQuizOpen(false)}>{selected === null ? "Nanti dulu" : "Selesai"} ↗</button></div>
-    </section></div>}
+    {quizOpen && (() => {
+      const material = materials.find((item) => item.slug === selectedMaterialSlug);
+      const questions = material ? materialQuizzes[material.slug] ?? [] : [];
+      const currentQuestion = questions[questionIndex];
+      const correctCount = questions.reduce((total, question, index) => total + (answers[index] === question.correctIndex ? 1 : 0), 0);
+      return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && (!material || submitted)) setQuizOpen(false); }}>
+        <section className="quiz-modal home-challenge-modal" role="dialog" aria-modal="true" aria-labelledby="quiz-title">
+          {(!material || submitted) && <button className="modal-close" aria-label="Tutup tantangan" onClick={() => setQuizOpen(false)}>×</button>}
+          <div className="quiz-kicker">◉ &nbsp; MISI PERTAMA · {material ? material.shortTitle.toUpperCase() : "PILIH MATERI"}</div>
+          {!material ? <>
+            <h2 id="quiz-title">Pilih materi untuk tantanganmu.</h2>
+            <p className="home-material-prompt">Setiap tantangan berisi 5 soal pilihan ganda.</p>
+            <div className="home-material-picker">{materials.map((item) => <button type="button" key={item.slug} onClick={() => { setSelectedMaterialSlug(item.slug); setQuestionIndex(0); setAnswers(Array((materialQuizzes[item.slug] ?? []).length).fill(-1)); setSubmitted(false); }}><span><b>{item.number}</b><strong>{item.shortTitle}</strong><small>{item.summary}</small></span><em>5 soal →</em></button>)}</div>
+          </> : submitted ? <>
+            <h2 id="quiz-title">Hasil tantangan: {material.shortTitle}</h2>
+            <div className="home-challenge-score"><strong>{correctCount} / {questions.length} benar</strong><span>Skor {Math.round(correctCount / questions.length * 100)} / 100</span></div>
+            <div className="home-challenge-review">{questions.map((question, index) => { const correct = answers[index] === question.correctIndex; return <article key={question.question}><div><b>Soal {index + 1}</b><strong className={correct ? "home-answer-correct" : "home-answer-wrong"}>{correct ? "Benar" : "Belum tepat"}</strong></div><p><FormulaText>{question.question}</FormulaText></p><small>Jawabanmu: <FormulaText>{question.options[answers[index]]}</FormulaText></small><small>Jawaban benar: <FormulaText>{question.options[question.correctIndex]}</FormulaText></small><p className="home-answer-explanation"><FormulaText>{question.explanation}</FormulaText></p></article>; })}</div>
+            <div className="quiz-footer"><button onClick={() => { setSelectedMaterialSlug(null); setSubmitted(false); }}>Pilih materi lain</button><button onClick={() => setQuizOpen(false)}>Selesai</button></div>
+          </> : <>
+            <div className="quiz-progress" style={{ background: `linear-gradient(90deg,#83adea ${((questionIndex + 1) / questions.length) * 100}%,#e9eef5 0)` }} />
+            <small className="question-count">SOAL {questionIndex + 1} DARI {questions.length}</small>
+            <h2 id="quiz-title">{currentQuestion && <FormulaText>{currentQuestion.question}</FormulaText>}</h2>
+            <div className="answer-list">{currentQuestion?.options.map((option, optionIndex) => <button key={option} className={`answer-option${answers[questionIndex] === optionIndex ? " answer-selected" : ""}`} aria-pressed={answers[questionIndex] === optionIndex} onClick={() => setAnswers((current) => current.map((answer, index) => index === questionIndex ? optionIndex : answer))}><b>{String.fromCharCode(65 + optionIndex)}</b><span><FormulaText>{option}</FormulaText></span>{answers[questionIndex] === optionIndex && <strong>✓</strong>}</button>)}</div>
+            <div className="quiz-footer"><span>{answers.filter((answer) => answer >= 0).length}/{questions.length} terjawab</span>{questionIndex > 0 && <button onClick={() => setQuestionIndex((value) => value - 1)}>Sebelumnya</button>}{questionIndex < questions.length - 1 ? <button disabled={answers[questionIndex] < 0} onClick={() => setQuestionIndex((value) => value + 1)}>Berikutnya →</button> : <button disabled={answers.some((answer) => answer < 0)} onClick={() => setSubmitted(true)}>Lihat hasil →</button>}</div>
+          </>}
+        </section>
+      </div>;
+    })()}
   </main>;
 }

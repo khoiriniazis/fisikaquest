@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function AuthPage() {
 
   return (
     <main className="auth-page">
-      <Link className="auth-brand" href="/" aria-label="FisikaQuest beranda"><span className="auth-brand-mark">FQ</span><span>Fisika<span>Quest</span></span></Link>
+      <BrandLogo href="/" className="auth-brand" />
       <section className="auth-card" aria-labelledby="auth-title">
         <div className="auth-art" aria-hidden="true"><span className="auth-art-kicker">FISIKA BISA JADI SERU</span><span className="auth-orbit auth-orbit-one" /><span className="auth-orbit auth-orbit-two" /><span className="auth-atom">F=ma</span><span className="auth-formula auth-formula-work"><b>W = F x s</b><small>Usaha</small></span><span className="auth-formula auth-formula-energy"><b>Ek = 1/2 mv^2</b><small>Energi kinetik</small></span><span className="auth-art-label">USAHA | ENERGI | PETUALANGAN</span></div>
         <div className="auth-content">

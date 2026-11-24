@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { ClassroomQuiz, loadQuizzes, QUIZZES_KEY, QuizQuestion } from "../../lib/classroom";
@@ -111,7 +112,7 @@ export default function TeacherPage() {
   const ownQuizzes = quizzes.filter((quiz) => quiz.createdBy === teacherEmail);
 
   return <main className="teacher-page">
-    <header className="classroom-header"><Link href="/" className="classroom-brand"><span>FQ</span> Fisika<span>Quest</span></Link><nav><span className="teacher-badge">PANEL GURU</span><Link href="/belajar">Lihat tampilan siswa ↗</Link><Link href="/">Beranda</Link><button onClick={logout}>Keluar</button></nav></header>
+    <header className="classroom-header"><BrandLogo href="/" className="classroom-brand" /><nav><span className="teacher-badge">PANEL GURU</span><Link href="/belajar">Lihat tampilan siswa ↗</Link><Link href="/">Beranda</Link><button onClick={logout}>Keluar</button></nav></header>
     <section className="teacher-wrap"><div className="teacher-intro"><span className="classroom-kicker">RUANG KREASI PENGAJAR</span><h1>Siapkan tantangan<br/><em>untuk kelasmu.</em></h1><p>Buat satu set kuis dengan beberapa soal, pilih jawaban benar, dan tambahkan pembahasan untuk siswa.</p></div>
       <div className="teacher-layout"><form ref={formRef} className="teacher-form" onSubmit={createQuiz}><h2>{editingQuizId ? "Edit kuis" : "Buat kuis baru"}</h2><p>Setiap judul kuis dapat berisi beberapa soal pilihan ganda.</p>
         <label>Judul kuis<input name="title" placeholder="Contoh: Memahami usaha" required/></label>
